@@ -8,7 +8,7 @@ import BookingConfirmation from './BookingConfirmation';
 import CallTranscript from './CallTranscript';
 
 export default function LoadDashboard() {
-  const { state, startNegotiation, addNegotiationQuote, setRecommendationSummary, addBooking, setError } = useStore();
+  const { state, startNegotiation, addNegotiationQuote, setRecommendationSummary, addBooking, resetDemo, setError } = useStore();
   const activeLoad = state.loads.find((l) => l.id === state.activeLoadId);
 
   const loadQuotes = activeLoad
@@ -93,9 +93,19 @@ export default function LoadDashboard() {
 
   return (
     <div className="mx-auto max-w-4xl p-6">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">SupplyLine</h1>
-        <p className="text-sm text-gray-500">Freight Sourcing Agent</p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">SupplyLine</h1>
+          <p className="text-sm text-gray-500">Freight Sourcing Agent</p>
+        </div>
+        {isBooked && (
+          <button
+            onClick={resetDemo}
+            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Reset Demo
+          </button>
+        )}
       </div>
 
       <div className="mb-6">

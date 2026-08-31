@@ -17,6 +17,7 @@ interface StoreContextType {
   finalizeRecommendation: (result: FinalResult) => void;
   setRecommendationSummary: (summary: string | null) => void;
   addBooking: (booking: Booking) => void;
+  resetDemo: () => void;
 }
 
 const StoreContext = createContext<StoreContextType | null>(null);
@@ -122,6 +123,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const resetDemo = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      quotes: [],
+      bookings: [],
+      recommendationSummary: null,
+      isSourcing: false,
+      currentRound: 0,
+      error: null,
+      loads: prev.loads.map((l) =>
+        l.id === prev.activeLoadId
+          ? { ...l, status: 'uncovered' as const }
+          : l
+      ),
+    }));
+  }, []);
+
   return (
     <StoreContext.Provider
       value={{
@@ -136,6 +154,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         finalizeRecommendation,
         setRecommendationSummary,
         addBooking,
+        resetDemo,
       }}
     >
       {children}
