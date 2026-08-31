@@ -2,7 +2,7 @@
 
 import { Load } from '@/lib/types';
 import { useStore } from '@/lib/store';
-import { mockCallCarriersForQuotes } from '@/lib/calle';
+import { callCarriersForQuotes } from '@/app/actions';
 import StatusBadge from './StatusBadge';
 
 interface LoadCardProps {
@@ -21,7 +21,7 @@ export default function LoadCard({ load }: LoadCardProps) {
         throw new Error('No active load found');
       }
 
-      const quotes = await mockCallCarriersForQuotes(activeLoad, state.carriers);
+      const quotes = await callCarriersForQuotes(activeLoad.id);
       addQuotes(quotes);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to source carriers');

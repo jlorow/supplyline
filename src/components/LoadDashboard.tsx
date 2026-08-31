@@ -2,7 +2,7 @@
 
 import { useStore } from '@/lib/store';
 import { compareRound1Quotes, determineFinalWinner } from '@/lib/comparison';
-import { mockNegotiateWithCarrier } from '@/lib/calle';
+import { negotiateWithCarrier } from '@/app/actions';
 import LoadCard from './LoadCard';
 
 export default function LoadDashboard() {
@@ -28,14 +28,9 @@ export default function LoadDashboard() {
         throw new Error('No negotiation target — gap too small');
       }
 
-      const targetCarrier = state.carriers.find(
-        (c) => c.id === comparison.negotiationTarget!.carrierId
-      );
-      if (!targetCarrier) throw new Error('Target carrier not found');
-
-      const quote = await mockNegotiateWithCarrier(
-        activeLoad,
-        targetCarrier,
+      const quote = await negotiateWithCarrier(
+        activeLoad.id,
+        comparison.negotiationTarget.carrierId,
         comparison.lowestQuote.quotedRate!
       );
 

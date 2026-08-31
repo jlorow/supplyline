@@ -1,11 +1,4 @@
-import { CalleClient } from '@call-e/calle';
 import { Load, Carrier, Quote } from './types';
-import { taskResultSchema, recipientResultSchema } from '../schemas/quote-schema';
-
-// Initialize CALL-E client
-const calleClient = new CalleClient({
-  apiKey: process.env.CALLE_API_KEY || '',
-});
 
 /**
  * Creates the task text for Round 1: asking carriers for availability and rate quotes.
@@ -26,70 +19,6 @@ Please:
 3. Confirm if the pickup date works for your schedule
 
 Be professional, direct, and concise. If you cannot cover the load, say so clearly.`;
-}
-
-/**
- * Calls all carriers for Round 1 quotes using CALL-E's createAndWait.
- * Returns parsed Quote objects for each carrier response.
- */
-export async function callCarriersForQuotes(
-  load: Load,
-  carriers: Carrier[]
-): Promise<Quote[]> {
-  const task = createQuoteTask(load);
-
-  // Multi-recipient call: CALL-E dials sequentially (concurrency limit = 1)
-  const response = await calleClient.calls.createAndWait({
-    task,
-    recipients: carriers.map((c) => ({
-      phones: [c.phoneNumber],
-      locale: 'en-US',
-    })),
-    resultSchema: taskResultSchema,
-    recipientResultSchema: recipientResultSchema,
-  });
-
-  // Parse recipient results into Quote objects
-  const quotes: Quote[] = [];
-  const now = new Date().toISOString();
-
-  for (const carrier of carriers) {
-    const recipientResult = response.recipients?.find(
-      (r) => r.phones.includes(carrier.phoneNumber)
-    );
-
-    if (recipientResult?.structuredResult) {
-      const sr = recipientResult.structuredResult;
-      quotes.push({
-        id: `quote-${load.id}-${carrier.id}-r1`,
-        loadId: load.id,
-        carrierId: carrier.id,
-        round: 1,
-        available: (['yes', 'no', 'unknown'].includes(sr.available as string) ? (sr.available as 'yes' | 'no' | 'unknown') : 'unknown'),
-        quotedRate: typeof sr.quoted_rate === 'number' ? sr.quoted_rate : null,
-        pickupConfirmed: (['yes', 'no', 'unknown'].includes(sr.pickup_confirmed as string) ? (sr.pickup_confirmed as 'yes' | 'no' | 'unknown') : 'unknown'),
-        evidence: (sr.evidence as string) || '',
-        transcript: recipientResult.summary || '',
-        timestamp: now,
-      });
-    } else {
-      // Fallback for missing/unparseable result
-      quotes.push({
-        id: `quote-${load.id}-${carrier.id}-r1`,
-        loadId: load.id,
-        carrierId: carrier.id,
-        round: 1,
-        available: 'unknown',
-        quotedRate: null,
-        pickupConfirmed: 'unknown',
-        evidence: 'No structured result returned from call.',
-        transcript: recipientResult?.summary || '',
-        timestamp: now,
-      });
-    }
-  }
-
-  return quotes;
 }
 
 /**
