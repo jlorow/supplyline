@@ -121,3 +121,54 @@ export async function mockCallCarriersForQuotes(
     timestamp: now,
   }));
 }
+
+/**
+ * Creates the task text for Round 2: negotiation call to the higher-quoted carrier.
+ */
+export function createNegotiationTask(load: Load, competingRate: number): string {
+  return `You are a freight broker calling back a trucking carrier to negotiate a better rate.
+
+Load details:
+- Origin: ${load.origin}
+- Destination: ${load.destination}
+- Equipment type: ${load.equipmentType}
+- Pickup date: ${load.pickupDate}
+- Weight: ${load.weight.toLocaleString()} lbs
+
+A competing carrier has quoted $${competingRate.toLocaleString()} to cover this load.
+
+Your goal: Ask if they can match or beat that rate to win the load. Be professional but firm. If they can't match, ask for their best counter-offer. If they refuse to negotiate, note that clearly.`;
+}
+
+/**
+ * MOCK version for round 2 negotiation testing.
+ * Returns a deterministic negotiated quote for the target carrier.
+ */
+export async function mockNegotiateWithCarrier(
+  load: Load,
+  carrier: Carrier,
+  competingRate: number
+): Promise<Quote> {
+  const now = new Date().toISOString();
+
+  // Demo data: Rockridge (carrier-a) negotiates down from $1,800 to $1,620
+  // when confronted with Prairie Line's $1,650
+  const mockNegotiatedRates: Record<string, number> = {
+    'carrier-a': 1620, // Rockridge drops to beat Prairie Line by $30
+  };
+
+  const negotiatedRate = mockNegotiatedRates[carrier.id] || competingRate - 20;
+
+  return {
+    id: `quote-${load.id}-${carrier.id}-r2`,
+    loadId: load.id,
+    carrierId: carrier.id,
+    round: 2,
+    available: 'yes',
+    quotedRate: negotiatedRate,
+    pickupConfirmed: 'yes',
+    evidence: `Carrier negotiated and agreed to $${negotiatedRate} after being presented with a competing quote of $${competingRate}.`,
+    transcript: `[Mock transcript] ${carrier.name}: "Well, $${competingRate.toLocaleString()} is tight for us... but since you need it covered tomorrow, I can do $${negotiatedRate.toLocaleString()}."`,
+    timestamp: now,
+  };
+}

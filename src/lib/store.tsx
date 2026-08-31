@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { AppState, Load, Quote } from './types';
+import { FinalResult } from './comparison';
 import { createInitialState } from './data';
 
 interface StoreContextType {
@@ -11,6 +12,9 @@ interface StoreContextType {
   updateLoadStatus: (loadId: string, status: Load['status']) => void;
   setError: (error: string | null) => void;
   resetSourcing: () => void;
+  startNegotiation: () => void;
+  addNegotiationQuote: (quote: Quote) => void;
+  finalizeRecommendation: (result: FinalResult) => void;
 }
 
 const StoreContext = createContext<StoreContextType | null>(null);
@@ -66,6 +70,39 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const startNegotiation = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      isSourcing: true,
+      currentRound: 2,
+      error: null,
+      loads: prev.loads.map((l) =>
+        l.id === prev.activeLoadId ? { ...l, status: 'negotiating' as const } : l
+      ),
+    }));
+  }, []);
+
+  const addNegotiationQuote = useCallback((quote: Quote) => {
+    setState((prev) => ({
+      ...prev,
+      quotes: [...prev.quotes, quote],
+      isSourcing: false,
+      currentRound: 2,
+      loads: prev.loads.map((l) =>
+        l.id === prev.activeLoadId ? { ...l, status: 'recommended' as const } : l
+      ),
+    }));
+  }, []);
+
+  const finalizeRecommendation = useCallback((result: FinalResult) => {
+    setState((prev) => ({
+      ...prev,
+      loads: prev.loads.map((l) =>
+        l.id === prev.activeLoadId ? { ...l, status: 'recommended' as const } : l
+      ),
+    }));
+  }, []);
+
   return (
     <StoreContext.Provider
       value={{
@@ -75,6 +112,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         updateLoadStatus,
         setError,
         resetSourcing,
+        startNegotiation,
+        addNegotiationQuote,
+        finalizeRecommendation,
       }}
     >
       {children}
