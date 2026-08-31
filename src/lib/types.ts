@@ -46,4 +46,5 @@ export interface AppState {
   isSourcing: boolean;
   currentRound: 0 | 1 | 2;
   error: string | null;
+  recommendationSummary: string | null;
 }

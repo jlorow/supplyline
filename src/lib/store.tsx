@@ -15,6 +15,7 @@ interface StoreContextType {
   startNegotiation: () => void;
   addNegotiationQuote: (quote: Quote) => void;
   finalizeRecommendation: (result: FinalResult) => void;
+  setRecommendationSummary: (summary: string | null) => void;
 }
 
 const StoreContext = createContext<StoreContextType | null>(null);
@@ -103,6 +104,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const setRecommendationSummary = useCallback((summary: string | null) => {
+    setState((prev) => ({
+      ...prev,
+      recommendationSummary: summary,
+    }));
+  }, []);
+
   return (
     <StoreContext.Provider
       value={{
@@ -115,6 +123,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         startNegotiation,
         addNegotiationQuote,
         finalizeRecommendation,
+        setRecommendationSummary,
       }}
     >
       {children}

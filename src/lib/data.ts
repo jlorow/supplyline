@@ -37,4 +37,5 @@ export const createInitialState = (): AppState => ({
   isSourcing: false,
   currentRound: 0,
   error: null,
+  recommendationSummary: null,
 });

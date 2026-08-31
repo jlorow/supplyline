@@ -2,11 +2,11 @@
 
 import { useStore } from '@/lib/store';
 import { compareRound1Quotes, determineFinalWinner } from '@/lib/comparison';
-import { negotiateWithCarrier } from '@/app/actions';
+import { negotiateWithCarrier, generateRecommendationSummary } from '@/app/actions';
 import LoadCard from './LoadCard';
 
 export default function LoadDashboard() {
-  const { state, startNegotiation, addNegotiationQuote, setError } = useStore();
+  const { state, startNegotiation, addNegotiationQuote, setRecommendationSummary, setError } = useStore();
   const activeLoad = state.loads.find((l) => l.id === state.activeLoadId);
 
   const loadQuotes = activeLoad
@@ -35,6 +35,20 @@ export default function LoadDashboard() {
       );
 
       addNegotiationQuote(quote);
+
+      // Generate AI summary after successful negotiation
+      const finalResult = determineFinalWinner(round1Quotes, quote);
+      const summary = await generateRecommendationSummary(
+        activeLoad.id,
+        finalResult.winner.carrierId,
+        finalResult.winner.quotedRate!,
+        finalResult.runnerUp.carrierId,
+        finalResult.runnerUp.quotedRate!,
+        finalResult.savingsVsOriginal,
+        finalResult.savingsVsNextBest,
+        finalResult.wasNegotiated
+      );
+      setRecommendationSummary(summary);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Negotiation failed');
     }
@@ -154,6 +168,17 @@ export default function LoadDashboard() {
                 </p>
               </div>
             </div>
+
+            {state.recommendationSummary && (
+              <div className="rounded-md border border-blue-100 bg-blue-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                  AI Recommendation
+                </p>
+                <p className="mt-1 text-sm text-blue-900">
+                  {state.recommendationSummary}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

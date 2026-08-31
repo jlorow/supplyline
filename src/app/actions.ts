@@ -9,6 +9,7 @@ import {
   mockCallCarriersForQuotes,
   mockNegotiateWithCarrier,
 } from '@/lib/calle';
+import { generateSummary } from '@/lib/kimi';
 import { taskResultSchema, recipientResultSchema } from '@/schemas/quote-schema';
 
 const calleClient = new CalleClient({
@@ -145,4 +146,41 @@ export async function negotiateWithCarrier(
     transcript: recipientResult?.summary || '',
     timestamp: now,
   };
+}
+
+/**
+ * Server Action: Generate AI recommendation summary using Kimi.
+ */
+export async function generateRecommendationSummary(
+  loadId: string,
+  winnerCarrierId: string,
+  winnerRate: number,
+  runnerUpCarrierId: string,
+  runnerUpRate: number,
+  savingsVsOriginal: number,
+  savingsVsNextBest: number,
+  wasNegotiated: boolean
+): Promise<string> {
+  const load = initialLoads.find((l) => l.id === loadId);
+  const winnerCarrier = initialCarriers.find((c) => c.id === winnerCarrierId);
+  const runnerUpCarrier = initialCarriers.find((c) => c.id === runnerUpCarrierId);
+
+  if (!load || !winnerCarrier || !runnerUpCarrier) {
+    throw new Error('Missing data for summary generation');
+  }
+
+  const prompt = `You are a freight broker assistant. Write a concise 2-3 sentence recommendation summary.
+
+Load: ${load.origin} → ${load.destination}, ${load.equipmentType}, ${load.weight.toLocaleString()} lbs, pickup ${load.pickupDate}
+
+Carriers quoted:
+- ${winnerCarrier.name}: $${winnerRate.toLocaleString()}${wasNegotiated ? ' (negotiated down from original quote)' : ''}
+- ${runnerUpCarrier.name}: $${runnerUpRate.toLocaleString()}
+
+Winner: ${winnerCarrier.name}
+Savings: $${savingsVsOriginal.toLocaleString()} vs their original quote, $${savingsVsNextBest.toLocaleString()} vs next best option
+
+Write a professional summary explaining why ${winnerCarrier.name} is recommended. Mention the negotiation if applicable. Be specific with numbers. Keep it under 250 characters if possible.`;
+
+  return generateSummary(prompt);
 }
