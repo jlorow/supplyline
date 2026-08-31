@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { AppState, Load, Quote } from './types';
+import { AppState, Load, Quote, Booking } from './types';
 import { FinalResult } from './comparison';
 import { createInitialState } from './data';
 
@@ -16,6 +16,7 @@ interface StoreContextType {
   addNegotiationQuote: (quote: Quote) => void;
   finalizeRecommendation: (result: FinalResult) => void;
   setRecommendationSummary: (summary: string | null) => void;
+  addBooking: (booking: Booking) => void;
 }
 
 const StoreContext = createContext<StoreContextType | null>(null);
@@ -111,6 +112,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const addBooking = useCallback((booking: Booking) => {
+    setState((prev) => ({
+      ...prev,
+      bookings: [...prev.bookings, booking],
+      loads: prev.loads.map((l) =>
+        l.id === booking.loadId ? { ...l, status: 'booked' as const } : l
+      ),
+    }));
+  }, []);
+
   return (
     <StoreContext.Provider
       value={{
@@ -124,6 +135,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         addNegotiationQuote,
         finalizeRecommendation,
         setRecommendationSummary,
+        addBooking,
       }}
     >
       {children}

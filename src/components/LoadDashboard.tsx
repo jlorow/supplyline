@@ -2,11 +2,12 @@
 
 import { useStore } from '@/lib/store';
 import { compareRound1Quotes, determineFinalWinner } from '@/lib/comparison';
-import { negotiateWithCarrier, generateRecommendationSummary } from '@/app/actions';
+import { negotiateWithCarrier, generateRecommendationSummary, createBooking } from '@/app/actions';
 import LoadCard from './LoadCard';
+import BookingConfirmation from './BookingConfirmation';
 
 export default function LoadDashboard() {
-  const { state, startNegotiation, addNegotiationQuote, setRecommendationSummary, setError } = useStore();
+  const { state, startNegotiation, addNegotiationQuote, setRecommendationSummary, addBooking, setError } = useStore();
   const activeLoad = state.loads.find((l) => l.id === state.activeLoadId);
 
   const loadQuotes = activeLoad
@@ -54,17 +55,40 @@ export default function LoadDashboard() {
     }
   };
 
+  const handleBookCarrier = async () => {
+    try {
+      const activeLoad = state.loads.find((l) => l.id === state.activeLoadId);
+      if (!activeLoad) throw new Error('No active load');
+
+      const finalResult = determineFinalWinner(round1Quotes, round2Quotes[0]);
+      
+      const booking = await createBooking(
+        activeLoad.id,
+        finalResult.winner.id,
+        finalResult.winner.quotedRate!,
+        finalResult.savingsVsOriginal,
+        finalResult.savingsVsNextBest
+      );
+
+      addBooking(booking);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Booking failed');
+    }
+  };
+
   const showNegotiateButton =
     round1Quotes.length === 2 &&
     round2Quotes.length === 0 &&
     activeLoad?.status === 'quoted';
 
-  const showFinalComparison = round2Quotes.length > 0;
+  const showFinalComparison = round2Quotes.length > 0 && activeLoad?.status !== 'booked';
 
   let finalResult = null;
   if (showFinalComparison && round1Quotes.length >= 2) {
     finalResult = determineFinalWinner(round1Quotes, round2Quotes[0]);
   }
+
+  const isBooked = activeLoad?.status === 'booked';
 
   return (
     <div className="mx-auto max-w-4xl p-6">
@@ -79,7 +103,7 @@ export default function LoadDashboard() {
 
       {activeLoad && <LoadCard load={activeLoad} />}
 
-      {round1Quotes.length > 0 && (
+      {round1Quotes.length > 0 && !isBooked && (
         <div className="mt-6 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <h3 className="mb-4 text-md font-semibold text-gray-800">Round 1 Quotes</h3>
           <div className="space-y-3">
@@ -179,9 +203,18 @@ export default function LoadDashboard() {
                 </p>
               </div>
             )}
+
+            <button
+              onClick={handleBookCarrier}
+              className="w-full rounded-md bg-green-600 px-4 py-3 text-sm font-semibold text-white hover:bg-green-700"
+            >
+              Book Carrier
+            </button>
           </div>
         </div>
       )}
+
+      {isBooked && <BookingConfirmation />}
 
       {state.error && (
         <div className="mt-4 rounded-md bg-red-50 p-4 text-red-700">

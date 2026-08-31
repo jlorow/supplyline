@@ -1,7 +1,7 @@
 'use server';
 
 import { CalleClient } from '@call-e/calle';
-import { Load, Carrier, Quote } from '@/lib/types';
+import { Load, Carrier, Quote, Booking } from '@/lib/types';
 import { initialLoads, initialCarriers } from '@/lib/data';
 import {
   createQuoteTask,
@@ -183,4 +183,32 @@ Savings: $${savingsVsOriginal.toLocaleString()} vs their original quote, $${savi
 Write a professional summary explaining why ${winnerCarrier.name} is recommended. Mention the negotiation if applicable. Be specific with numbers. Keep it under 250 characters if possible.`;
 
   return generateSummary(prompt);
+}
+
+/**
+ * Server Action: Create a booking record for the winning quote.
+ */
+export async function createBooking(
+  loadId: string,
+  winningQuoteId: string,
+  finalRate: number,
+  savingsVsOriginal: number,
+  savingsVsNextBest: number
+): Promise<Booking> {
+  const load = initialLoads.find((l) => l.id === loadId);
+  if (!load) throw new Error(`Load ${loadId} not found`);
+
+  const now = new Date().toISOString();
+
+  const booking: Booking = {
+    id: `booking-${loadId}-${Date.now()}`,
+    loadId,
+    winningQuoteId,
+    finalRate,
+    savingsVsOriginal,
+    savingsVsNextBest,
+    timestamp: now,
+  };
+
+  return booking;
 }
