@@ -1,86 +1,91 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { AppState, Load, Carrier, Quote, Booking } from './types';
+import React, { createContext, useContext, useState, useCallback } from 'react';
+import { AppState, Load, Quote } from './types';
 import { createInitialState } from './data';
 
-interface AppContextType {
+interface StoreContextType {
   state: AppState;
-  setActiveLoadId: (id: string | null) => void;
-  setLoadStatus: (loadId: string, status: Load['status']) => void;
-  setIsSourcing: (isSourcing: boolean) => void;
-  setCurrentRound: (round: 0 | 1 | 2) => void;
+  startSourcing: () => void;
+  addQuotes: (quotes: Quote[]) => void;
+  updateLoadStatus: (loadId: string, status: Load['status']) => void;
   setError: (error: string | null) => void;
-  addQuote: (quote: Quote) => void;
-  addBooking: (booking: Booking) => void;
+  resetSourcing: () => void;
 }
 
-const AppContext = createContext<AppContextType | undefined>(undefined);
+const StoreContext = createContext<StoreContextType | null>(null);
 
-export function AppProvider({ children }: { children: ReactNode }) {
+export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(createInitialState());
 
-  const setActiveLoadId = useCallback((id: string | null) => {
-    setState((prev) => ({ ...prev, activeLoadId: id }));
-  }, []);
-
-  const setLoadStatus = useCallback((loadId: string, status: Load['status']) => {
+  const startSourcing = useCallback(() => {
     setState((prev) => ({
       ...prev,
-      loads: prev.loads.map((load) =>
-        load.id === loadId ? { ...load, status } : load
+      isSourcing: true,
+      currentRound: 1,
+      error: null,
+      loads: prev.loads.map((l) =>
+        l.id === prev.activeLoadId ? { ...l, status: 'sourcing' as const } : l
       ),
     }));
   }, []);
 
-  const setIsSourcing = useCallback((isSourcing: boolean) => {
-    setState((prev) => ({ ...prev, isSourcing }));
-  }, []);
-
-  const setCurrentRound = useCallback((round: 0 | 1 | 2) => {
-    setState((prev) => ({ ...prev, currentRound: round }));
-  }, []);
-
-  const setError = useCallback((error: string | null) => {
-    setState((prev) => ({ ...prev, error }));
-  }, []);
-
-  const addQuote = useCallback((quote: Quote) => {
+  const addQuotes = useCallback((quotes: Quote[]) => {
     setState((prev) => ({
       ...prev,
-      quotes: [...prev.quotes, quote],
+      quotes: [...prev.quotes, ...quotes],
+      isSourcing: false,
+      currentRound: 1,
+      loads: prev.loads.map((l) =>
+        l.id === prev.activeLoadId ? { ...l, status: 'quoted' as const } : l
+      ),
     }));
   }, []);
 
-  const addBooking = useCallback((booking: Booking) => {
+  const updateLoadStatus = useCallback((loadId: string, status: Load['status']) => {
     setState((prev) => ({
       ...prev,
-      bookings: [...prev.bookings, booking],
+      loads: prev.loads.map((l) => (l.id === loadId ? { ...l, status } : l)),
+    }));
+  }, []);
+
+  const setError = useCallback((error: string | null) => {
+    setState((prev) => ({
+      ...prev,
+      error,
+      isSourcing: false,
+    }));
+  }, []);
+
+  const resetSourcing = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      isSourcing: false,
+      currentRound: 0,
+      error: null,
     }));
   }, []);
 
   return (
-    <AppContext.Provider
+    <StoreContext.Provider
       value={{
         state,
-        setActiveLoadId,
-        setLoadStatus,
-        setIsSourcing,
-        setCurrentRound,
+        startSourcing,
+        addQuotes,
+        updateLoadStatus,
         setError,
-        addQuote,
-        addBooking,
+        resetSourcing,
       }}
     >
       {children}
-    </AppContext.Provider>
+    </StoreContext.Provider>
   );
 }
 
-export function useAppContext(): AppContextType {
-  const context = useContext(AppContext);
+export function useStore() {
+  const context = useContext(StoreContext);
   if (!context) {
-    throw new Error('useAppContext must be used within an AppProvider');
+    throw new Error('useStore must be used within a StoreProvider');
   }
   return context;
 }
