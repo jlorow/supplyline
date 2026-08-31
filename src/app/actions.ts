@@ -19,7 +19,8 @@ const calleClient = new CalleClient({
 const MOCK_CALLS = process.env.MOCK_CALLS === 'true';
 
 /**
- * Server Action: Round 1 — call all carriers for quotes.
+ * Server Action: Round 1 — call all carriers for quotes SEQUENTIALLY.
+ * The SDK does NOT support multi-recipient arrays. Loop over carriers individually.
  */
 export async function callCarriersForQuotes(loadId: string): Promise<Quote[]> {
   const load = initialLoads.find((l) => l.id === loadId);
@@ -31,41 +32,55 @@ export async function callCarriersForQuotes(loadId: string): Promise<Quote[]> {
     return mockCallCarriersForQuotes(load, carriers);
   }
 
-  const task = createQuoteTask(load);
-
-  const response = await calleClient.calls.createAndWait({
-    task,
-    recipients: carriers.map((c) => ({
-      phones: [c.phoneNumber],
-      locale: 'en-US',
-    })),
-    resultSchema: taskResultSchema,
-    recipientResultSchema: recipientResultSchema,
-  });
-
   const quotes: Quote[] = [];
   const now = new Date().toISOString();
 
+  // SEQUENTIAL individual calls — SDK only supports single recipient
   for (const carrier of carriers) {
-    const recipientResult = response.recipients?.find(
-      (r) => r.phones.includes(carrier.phoneNumber)
-    );
+    const task = createQuoteTask(load);
 
-    if (recipientResult?.structuredResult) {
-      const sr = recipientResult.structuredResult;
-      quotes.push({
-        id: `quote-${load.id}-${carrier.id}-r1`,
-        loadId: load.id,
-        carrierId: carrier.id,
-        round: 1,
-        available: (['yes', 'no', 'unknown'].includes(sr.available as string) ? (sr.available as 'yes' | 'no' | 'unknown') : 'unknown'),
-        quotedRate: typeof sr.quoted_rate === 'number' ? sr.quoted_rate : null,
-        pickupConfirmed: (['yes', 'no', 'unknown'].includes(sr.pickup_confirmed as string) ? (sr.pickup_confirmed as 'yes' | 'no' | 'unknown') : 'unknown'),
-        evidence: (sr.evidence as string) || '',
-        transcript: recipientResult.summary || '',
-        timestamp: now,
+    try {
+      const response = await calleClient.calls.createAndWait({
+        task,
+        recipient: {
+          phones: [carrier.phoneNumber], // SDK uses `phones` array, not `phoneNumber`
+        },
+        resultSchema: taskResultSchema,
+        recipientResultSchema: recipientResultSchema,
       });
-    } else {
+
+      const recipientResult = (response as any).recipientResults?.[0] || (response as any).result;
+
+      if (recipientResult?.structuredResult) {
+        const sr = recipientResult.structuredResult;
+        quotes.push({
+          id: `quote-${load.id}-${carrier.id}-r1`,
+          loadId: load.id,
+          carrierId: carrier.id,
+          round: 1,
+          available: (['yes', 'no', 'unknown'].includes(sr.available as string) ? (sr.available as 'yes' | 'no' | 'unknown') : 'unknown'),
+          quotedRate: typeof sr.quoted_rate === 'number' ? sr.quoted_rate : null,
+          pickupConfirmed: (['yes', 'no', 'unknown'].includes(sr.pickup_confirmed as string) ? (sr.pickup_confirmed as 'yes' | 'no' | 'unknown') : 'unknown'),
+          evidence: (sr.evidence as string) || '',
+          transcript: recipientResult.transcript || '',
+          timestamp: now,
+        });
+      } else {
+        quotes.push({
+          id: `quote-${load.id}-${carrier.id}-r1`,
+          loadId: load.id,
+          carrierId: carrier.id,
+          round: 1,
+          available: 'unknown',
+          quotedRate: null,
+          pickupConfirmed: 'unknown',
+          evidence: 'No structured result returned from call.',
+          transcript: recipientResult?.transcript || '',
+          timestamp: now,
+        });
+      }
+    } catch (err) {
+      console.error(`CALL-E error for ${carrier.name}:`, err);
       quotes.push({
         id: `quote-${load.id}-${carrier.id}-r1`,
         loadId: load.id,
@@ -74,8 +89,8 @@ export async function callCarriersForQuotes(loadId: string): Promise<Quote[]> {
         available: 'unknown',
         quotedRate: null,
         pickupConfirmed: 'unknown',
-        evidence: 'No structured result returned from call.',
-        transcript: recipientResult?.summary || '',
+        evidence: `Call failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        transcript: '',
         timestamp: now,
       });
     }
@@ -106,10 +121,9 @@ export async function negotiateWithCarrier(
 
   const response = await calleClient.calls.createAndWait({
     task,
-    recipients: [{
+    recipient: {
       phones: [carrier.phoneNumber],
-      locale: 'en-US',
-    }],
+    },
     resultSchema: taskResultSchema,
     recipientResultSchema: recipientResultSchema,
   });
