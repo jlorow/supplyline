@@ -5,6 +5,7 @@ import { compareRound1Quotes, determineFinalWinner } from '@/lib/comparison';
 import { negotiateWithCarrier, generateRecommendationSummary, createBooking } from '@/app/actions';
 import LoadCard from './LoadCard';
 import BookingConfirmation from './BookingConfirmation';
+import CallTranscript from './CallTranscript';
 
 export default function LoadDashboard() {
   const { state, startNegotiation, addNegotiationQuote, setRecommendationSummary, addBooking, setError } = useStore();
@@ -215,6 +216,8 @@ export default function LoadDashboard() {
       )}
 
       {isBooked && <BookingConfirmation />}
+
+      {loadQuotes.length > 0 && <CallTranscript />}
 
       {state.error && (
         <div className="mt-4 rounded-md bg-red-50 p-4 text-red-700">
