@@ -38,15 +38,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addQuotes = useCallback((quotes: Quote[]) => {
-    setState((prev) => ({
-      ...prev,
-      quotes: [...prev.quotes, ...quotes],
-      isSourcing: false,
-      currentRound: 1,
-      loads: prev.loads.map((l) =>
-        l.id === prev.activeLoadId ? { ...l, status: 'quoted' as const } : l
-      ),
-    }));
+    setState((prev) => {
+      const newQuotes = [...prev.quotes, ...quotes];
+      const loadR1Quotes = newQuotes.filter(
+        (q) => q.loadId === prev.activeLoadId && q.round === 1
+      );
+      const validR1Quotes = loadR1Quotes.filter((q) => q.quotedRate !== null);
+      const newStatus: Load['status'] =
+        validR1Quotes.length >= 2 ? 'quoted' : 'uncovered';
+
+      return {
+        ...prev,
+        quotes: newQuotes,
+        isSourcing: false,
+        currentRound: 1,
+        loads: prev.loads.map((l) =>
+          l.id === prev.activeLoadId ? { ...l, status: newStatus } : l
+        ),
+      };
+    });
   }, []);
 
   const updateLoadStatus = useCallback((loadId: string, status: Load['status']) => {

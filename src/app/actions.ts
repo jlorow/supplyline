@@ -1,7 +1,7 @@
 'use server';
 
 import { CalleClient } from '@call-e/calle';
-import { Load, Carrier, Quote, Booking } from '@/lib/types';
+import { Quote, Booking } from '@/lib/types';
 import { initialLoads, initialCarriers } from '@/lib/data';
 import {
   createQuoteTask,
@@ -49,7 +49,7 @@ export async function callCarriersForQuotes(loadId: string): Promise<Quote[]> {
         recipientResultSchema: recipientResultSchema,
       });
 
-      const recipientResult = (response as any).recipientResults?.[0] || (response as any).result;
+      const recipientResult = response.recipients?.[0];
 
       if (recipientResult?.structuredResult) {
         const sr = recipientResult.structuredResult;
@@ -62,7 +62,7 @@ export async function callCarriersForQuotes(loadId: string): Promise<Quote[]> {
           quotedRate: typeof sr.quoted_rate === 'number' ? sr.quoted_rate : null,
           pickupConfirmed: (['yes', 'no', 'unknown'].includes(sr.pickup_confirmed as string) ? (sr.pickup_confirmed as 'yes' | 'no' | 'unknown') : 'unknown'),
           evidence: (sr.evidence as string) || '',
-          transcript: recipientResult.transcript || '',
+          transcript: recipientResult.summary || '',
           timestamp: now,
         });
       } else {
@@ -75,7 +75,7 @@ export async function callCarriersForQuotes(loadId: string): Promise<Quote[]> {
           quotedRate: null,
           pickupConfirmed: 'unknown',
           evidence: 'No structured result returned from call.',
-          transcript: recipientResult?.transcript || '',
+          transcript: recipientResult?.summary || '',
           timestamp: now,
         });
       }

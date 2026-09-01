@@ -77,8 +77,10 @@ export default function LoadDashboard() {
     }
   };
 
+  const validRound1Quotes = round1Quotes.filter((q) => q.quotedRate !== null);
+
   const showNegotiateButton =
-    round1Quotes.length === 2 &&
+    validRound1Quotes.length >= 2 &&
     round2Quotes.length === 0 &&
     activeLoad?.status === 'quoted';
 
@@ -153,6 +155,12 @@ export default function LoadDashboard() {
             >
               {state.isSourcing ? 'Negotiating...' : 'Negotiate Best Rate'}
             </button>
+          )}
+
+          {round1Quotes.length > 0 && validRound1Quotes.length < 2 && (
+            <p className="mt-4 text-sm text-red-600">
+              Need at least 2 valid quoted rates to compare
+            </p>
           )}
         </div>
       )}
