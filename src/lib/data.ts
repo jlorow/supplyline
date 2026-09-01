@@ -16,12 +16,12 @@ export const initialCarriers: Carrier[] = [
   {
     id: 'carrier-a',
     name: 'Rockridge Transport LLC',
-    phoneNumber: '+15551234567', // DEMO: controlled test phone
+    phoneNumber: '+15550001001', // Real test phone for Carrier A
   },
   {
     id: 'carrier-b',
     name: 'Prairie Line Carriers',
-    phoneNumber: '+15559876543', // DEMO: controlled test phone
+    phoneNumber: '+15550001003', // Real test phone for Carrier B
   },
 ];
 
