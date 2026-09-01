@@ -196,7 +196,20 @@ Savings: $${savingsVsOriginal.toLocaleString()} vs their original quote, $${savi
 
 Write a professional summary explaining why ${winnerCarrier.name} is recommended. Mention the negotiation if applicable. Be specific with numbers. Keep it under 250 characters if possible.`;
 
-  return generateSummary(prompt);
+  return generateSummary(prompt, {
+    loadOrigin: load.origin,
+    loadDestination: load.destination,
+    equipmentType: load.equipmentType,
+    weight: load.weight,
+    pickupDate: load.pickupDate,
+    winnerName: winnerCarrier.name,
+    winnerRate,
+    runnerUpName: runnerUpCarrier.name,
+    runnerUpRate,
+    savingsVsOriginal,
+    savingsVsNextBest,
+    wasNegotiated,
+  });
 }
 
 /**

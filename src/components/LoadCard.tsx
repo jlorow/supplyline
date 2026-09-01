@@ -3,7 +3,8 @@
 import { Load } from '@/lib/types';
 import { useStore } from '@/lib/store';
 import { callCarriersForQuotes } from '@/app/actions';
-import StatusBadge from './StatusBadge';
+import { Phone } from 'lucide-react';
+import LoadStatusStepper from './LoadStatusStepper';
 
 interface LoadCardProps {
   load: Load;
@@ -29,31 +30,97 @@ export default function LoadCard({ load }: LoadCardProps) {
   };
 
   const isSourcing = state.isSourcing && state.activeLoadId === load.id;
+  const isActive = load.status !== 'uncovered' && load.status !== 'booked';
+
+  // Compute best rate from round 1 quotes for this load
+  const loadQuotes = state.quotes.filter((q) => q.loadId === load.id && q.round === 1);
+  const validQuotes = loadQuotes.filter((q) => q.quotedRate !== null);
+  const bestRate = validQuotes.length > 0
+    ? Math.min(...validQuotes.map((q) => q.quotedRate!))
+    : null;
+
+  // Compute average rate for delta display
+  const avgRate = validQuotes.length > 1
+    ? validQuotes.reduce((sum, q) => sum + q.quotedRate!, 0) / validQuotes.length
+    : null;
+
+  const deltaVsAvg = bestRate !== null && avgRate !== null
+    ? Math.round(avgRate - bestRate)
+    : null;
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+    <div className="relative rounded-xl border border-surface-border bg-surface-card p-6 shadow-sm">
+      {/* Brand accent bar on left edge */}
+      <div className="absolute left-0 top-0 h-full w-1 rounded-l-xl bg-brand" />
+
+      {/* Top row: LIVE LOAD badge + Route + Meta */}
       <div className="flex items-start justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">
+        <div className="flex-1">
+          {/* LIVE LOAD badge */}
+          {isActive && (
+            <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-success-bg px-3 py-1 text-xs font-semibold uppercase tracking-wide text-success">
+              <span className="h-1 w-1 rounded-full bg-success" />
+              LIVE LOAD
+            </div>
+          )}
+
+          {/* Route */}
+          <h3 className="text-2xl font-bold text-ink">
             {load.origin} → {load.destination}
           </h3>
-          <p className="mt-1 text-sm text-gray-500">
+
+          {/* Meta line */}
+          <p className="mt-1 text-sm text-ink-muted">
             {load.equipmentType} • {load.weight.toLocaleString()} lbs • Pickup: {load.pickupDate}
           </p>
         </div>
-        <StatusBadge status={load.status} />
       </div>
 
-      <div className="mt-4 flex items-center gap-4">
+      {/* Middle row: Stepper + Best Rate panel */}
+      <div className="mt-6 flex items-start justify-between gap-6">
+        {/* Left: Stepper */}
+        <div className="flex-1">
+          <LoadStatusStepper
+            status={load.status}
+            isSourcing={state.isSourcing && state.activeLoadId === load.id}
+            currentRound={state.currentRound}
+          />
+        </div>
+
+        {/* Right: Best Rate panel */}
+        {validQuotes.length > 0 && (
+          <div className="flex flex-col items-end">
+            <span className="text-xs font-medium text-ink-subtle">Best Rate (so far)</span>
+            {bestRate !== null ? (
+              <>
+                <span className="mt-1 text-3xl font-bold text-brand">
+                  ${bestRate.toLocaleString()}
+                </span>
+                {deltaVsAvg !== null && deltaVsAvg > 0 && (
+                  <span className="mt-0.5 text-sm font-medium text-success">
+                    ↓ ${deltaVsAvg.toLocaleString()} vs avg
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="mt-1 text-3xl font-bold text-ink-subtle">—</span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Bottom row: Action button */}
+      <div className="mt-5 flex items-center gap-4">
         <button
           onClick={handleSourceCarriers}
           disabled={isSourcing || load.status !== 'uncovered'}
-          className={`rounded-md px-4 py-2 text-sm font-medium ${
+          className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
             isSourcing || load.status !== 'uncovered'
-              ? 'cursor-not-allowed bg-gray-300 text-gray-500'
-              : 'bg-blue-600 text-white hover:bg-blue-700'
+              ? 'cursor-not-allowed border border-surface-border bg-surface-page text-ink-subtle'
+              : 'border border-brand text-brand hover:bg-brand-light'
           }`}
         >
+          <Phone size={16} />
           {isSourcing ? 'Sourcing...' : 'Source Carriers'}
         </button>
 
