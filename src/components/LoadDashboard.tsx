@@ -6,6 +6,7 @@ import { negotiateWithCarrier, generateRecommendationSummary, createBooking } fr
 import { Bell, Plus } from 'lucide-react';
 import SupplyLineLogo from './SupplyLineLogo';
 import LoadCard from './LoadCard';
+import LoadStatusStepper from './LoadStatusStepper';
 import BookingConfirmation from './BookingConfirmation';
 import CallTranscript from './CallTranscript';
 
@@ -40,7 +41,6 @@ export default function LoadDashboard() {
 
       addNegotiationQuote(quote);
 
-      // Generate AI summary after successful negotiation
       const finalResult = determineFinalWinner(round1Quotes, quote);
       const summary = await generateRecommendationSummary(
         activeLoad.id,
@@ -64,7 +64,7 @@ export default function LoadDashboard() {
       if (!activeLoad) throw new Error('No active load');
 
       const finalResult = determineFinalWinner(round1Quotes, round2Quotes[0]);
-      
+
       const booking = await createBooking(
         activeLoad.id,
         finalResult.winner.id,
@@ -100,7 +100,6 @@ export default function LoadDashboard() {
       {/* Header / Top Bar */}
       <header className="border-b border-surface-border bg-surface-card px-6 py-4">
         <div className="mx-auto flex max-w-4xl items-center justify-between">
-          {/* Left: Logo + Wordmark */}
           <div className="flex items-center gap-3">
             <SupplyLineLogo className="h-9 w-9" />
             <div>
@@ -108,8 +107,6 @@ export default function LoadDashboard() {
               <p className="text-xs text-ink-muted">Freight Sourcing Agent</p>
             </div>
           </div>
-
-          {/* Right: Bell + Action Buttons */}
           <div className="flex items-center gap-3">
             <button
               className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-page hover:text-ink"
@@ -117,12 +114,10 @@ export default function LoadDashboard() {
             >
               <Bell size={20} />
             </button>
-
             <button className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover">
               <Plus size={16} />
               New Load
             </button>
-
             {isBooked && (
               <button
                 onClick={resetDemo}
@@ -135,141 +130,156 @@ export default function LoadDashboard() {
         </div>
       </header>
 
-      {/* Page Content */}
-      <main className="mx-auto max-w-4xl p-6">
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-ink">Load Board</h2>
-        </div>
+      {/* Outer row: sidenav + right content */}
+      <div className="flex items-start gap-20 p-6">
+        {/* Independent left sidenav */}
+        <aside className="w-[300px] shrink-0 pt-10">
+          <LoadStatusStepper
+            status={activeLoad?.status ?? 'uncovered'}
+            isSourcing={state.isSourcing && state.activeLoadId === activeLoad?.id}
+            currentRound={state.currentRound}
+          />
+        </aside>
 
-        {activeLoad && <LoadCard load={activeLoad} />}
+        {/* Right content column */}
+        <div className="flex-1 min-w-0">
+          <h2 className="mb-6 text-lg font-semibold text-ink">Load Board</h2>
 
-        {round1Quotes.length > 0 && !isBooked && (
-          <div className="mt-6 rounded-lg border border-surface-border bg-surface-card p-6 shadow-sm">
-            <h3 className="mb-4 text-md font-semibold text-ink">Round 1 Quotes</h3>
-            <div className="space-y-3">
-              {round1Quotes.map((quote) => {
-                const carrier = state.carriers.find((c) => c.id === quote.carrierId);
-                return (
-                  <div
-                    key={quote.id}
-                    className="flex items-center justify-between rounded-md border border-surface-border bg-surface-page p-4"
+          <div className="space-y-6">
+            {activeLoad && <LoadCard load={activeLoad} />}
+
+            {round1Quotes.length > 0 && !isBooked && (
+              <div className="rounded-lg border border-surface-border bg-surface-card p-6 shadow-sm">
+                <h3 className="mb-4 text-md font-semibold text-ink">Round 1 Quotes</h3>
+                <div className="space-y-3">
+                  {round1Quotes.map((quote) => {
+                    const carrier = state.carriers.find((c) => c.id === quote.carrierId);
+                    return (
+                      <div
+                        key={quote.id}
+                        className="flex items-center justify-between rounded-md border border-surface-border bg-surface-page p-4"
+                      >
+                        <div>
+                          <p className="font-medium text-ink">{carrier?.name}</p>
+                          <p className="text-sm text-ink-muted">
+                            Available: {quote.available} • Pickup: {quote.pickupConfirmed}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xl font-bold text-ink">
+                            {quote.quotedRate ? `$${quote.quotedRate.toLocaleString()}` : 'No quote'}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {showNegotiateButton && (
+                  <button
+                    onClick={handleNegotiate}
+                    disabled={state.isSourcing}
+                    className={`mt-4 rounded-md px-4 py-2 text-sm font-medium ${
+                      state.isSourcing
+                        ? 'cursor-not-allowed bg-surface-border text-ink-subtle'
+                        : 'bg-orange-600 text-white hover:bg-orange-700'
+                    }`}
                   >
+                    {state.isSourcing ? 'Negotiating...' : 'Negotiate Best Rate'}
+                  </button>
+                )}
+
+                {round1Quotes.length > 0 && validRound1Quotes.length < 2 && (
+                  <p className="mt-4 text-sm text-red-600">
+                    Need at least 2 valid quoted rates to compare
+                  </p>
+                )}
+              </div>
+            )}
+
+            {showFinalComparison && finalResult && (
+              <div className="rounded-lg border-2 border-green-200 bg-success-bg p-6 shadow-sm">
+                <h3 className="mb-4 text-md font-semibold text-green-900">Final Recommendation</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-ink">{carrier?.name}</p>
+                      <p className="font-medium text-ink">
+                        {state.carriers.find((c) => c.id === finalResult.winner.carrierId)?.name}
+                        {finalResult.wasNegotiated && (
+                          <span className="ml-2 rounded-full bg-success-bg px-2 py-0.5 text-xs font-medium text-success">
+                            Negotiated
+                          </span>
+                        )}
+                      </p>
                       <p className="text-sm text-ink-muted">
-                        Available: {quote.available} • Pickup: {quote.pickupConfirmed}
+                        {finalResult.wasNegotiated
+                          ? 'Rate secured through negotiation'
+                          : 'Best original quote'}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xl font-bold text-ink">
-                        {quote.quotedRate ? `$${quote.quotedRate.toLocaleString()}` : 'No quote'}
+                      <p className="text-2xl font-bold text-green-700">
+                        ${finalResult.winner.quotedRate?.toLocaleString()}
                       </p>
                     </div>
                   </div>
-                );
-              })}
-            </div>
 
-            {showNegotiateButton && (
-              <button
-                onClick={handleNegotiate}
-                disabled={state.isSourcing}
-                className={`mt-4 rounded-md px-4 py-2 text-sm font-medium ${
-                  state.isSourcing
-                    ? 'cursor-not-allowed bg-surface-border text-ink-subtle'
-                    : 'bg-orange-600 text-white hover:bg-orange-700'
-                }`}
-              >
-                {state.isSourcing ? 'Negotiating...' : 'Negotiate Best Rate'}
-              </button>
-            )}
+                  <div className="grid grid-cols-2 gap-4 rounded-md bg-surface-card p-4">
+                    <div>
+                      <p className="text-xs text-ink-muted">Saved vs original quote</p>
+                      <p className="text-lg font-semibold text-success">
+                        ${finalResult.savingsVsOriginal.toLocaleString()}
+                        {finalResult.savingsVsOriginal > 0 && (
+                          <span className="ml-1 text-sm">
+                            ({Math.round((finalResult.savingsVsOriginal / (finalResult.winner.quotedRate! + finalResult.savingsVsOriginal)) * 100)}%)
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-ink-muted">Saved vs next best</p>
+                      <p className="text-lg font-semibold text-success">
+                        ${finalResult.savingsVsNextBest.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
 
-            {round1Quotes.length > 0 && validRound1Quotes.length < 2 && (
-              <p className="mt-4 text-sm text-red-600">
-                Need at least 2 valid quoted rates to compare
-              </p>
-            )}
-          </div>
-        )}
+                  {state.recommendationSummary && (
+                    <div className="rounded-md border border-brand-light bg-brand-light p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-brand">
+                        AI Recommendation
+                      </p>
+                      <p className="mt-1 text-sm text-ink">
+                        {state.recommendationSummary}
+                      </p>
+                    </div>
+                  )}
 
-        {showFinalComparison && finalResult && (
-          <div className="mt-6 rounded-lg border-2 border-green-200 bg-success-bg p-6 shadow-sm">
-            <h3 className="mb-4 text-md font-semibold text-green-900">Final Recommendation</h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-ink">
-                    {state.carriers.find((c) => c.id === finalResult.winner.carrierId)?.name}
-                    {finalResult.wasNegotiated && (
-                      <span className="ml-2 rounded-full bg-success-bg px-2 py-0.5 text-xs font-medium text-success">
-                        Negotiated
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-sm text-ink-muted">
-                    {finalResult.wasNegotiated
-                      ? 'Rate secured through negotiation'
-                      : 'Best original quote'}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-green-700">
-                    ${finalResult.winner.quotedRate?.toLocaleString()}
-                  </p>
+                  <button
+                    onClick={handleBookCarrier}
+                    className="w-full rounded-md bg-success px-4 py-3 text-sm font-semibold text-white hover:opacity-90"
+                  >
+                    Book Carrier
+                  </button>
                 </div>
               </div>
+            )}
 
-              <div className="grid grid-cols-2 gap-4 rounded-md bg-surface-card p-4">
-                <div>
-                  <p className="text-xs text-ink-muted">Saved vs original quote</p>
-                  <p className="text-lg font-semibold text-success">
-                    ${finalResult.savingsVsOriginal.toLocaleString()}
-                    {finalResult.savingsVsOriginal > 0 && (
-                      <span className="ml-1 text-sm">
-                        ({Math.round((finalResult.savingsVsOriginal / (finalResult.winner.quotedRate! + finalResult.savingsVsOriginal)) * 100)}%)
-                      </span>
-                    )}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-ink-muted">Saved vs next best</p>
-                  <p className="text-lg font-semibold text-success">
-                    ${finalResult.savingsVsNextBest.toLocaleString()}
-                  </p>
-                </div>
-              </div>
-
-              {state.recommendationSummary && (
-                <div className="rounded-md border border-brand-light bg-brand-light p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-brand">
-                    AI Recommendation
-                  </p>
-                  <p className="mt-1 text-sm text-ink">
-                    {state.recommendationSummary}
-                  </p>
-                </div>
-              )}
-
-              <button
-                onClick={handleBookCarrier}
-                className="w-full rounded-md bg-success px-4 py-3 text-sm font-semibold text-white hover:opacity-90"
-              >
-                Book Carrier
-              </button>
-            </div>
+            {isBooked && <BookingConfirmation />}
           </div>
-        )}
+        </div>
+      </div>
 
-        {isBooked && <BookingConfirmation />}
-
+      {/* Call Transcripts — full width, below both columns */}
+      <div className="px-6">
         {loadQuotes.length > 0 && <CallTranscript />}
+      </div>
 
-        {state.error && (
-          <div className="mt-4 rounded-md bg-red-50 p-4 text-red-700">
-            <p className="text-sm font-medium">Error: {state.error}</p>
-          </div>
-        )}
-      </main>
+      {state.error && (
+        <div className="mx-6 mt-4 rounded-md bg-red-50 p-4 text-red-700">
+          <p className="text-sm font-medium">Error: {state.error}</p>
+        </div>
+      )}
     </div>
   );
 }

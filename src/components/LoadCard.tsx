@@ -4,7 +4,6 @@ import { Load } from '@/lib/types';
 import { useStore } from '@/lib/store';
 import { callCarriersForQuotes } from '@/app/actions';
 import { Phone } from 'lucide-react';
-import LoadStatusStepper from './LoadStatusStepper';
 
 interface LoadCardProps {
   load: Load;
@@ -53,17 +52,17 @@ export default function LoadCard({ load }: LoadCardProps) {
       {/* Brand accent bar on left edge */}
       <div className="absolute left-0 top-0 h-full w-1 rounded-l-xl bg-brand" />
 
-      {/* Top row: LIVE LOAD badge + Route + Meta */}
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          {/* LIVE LOAD badge */}
-          {isActive && (
-            <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-success-bg px-3 py-1 text-xs font-semibold uppercase tracking-wide text-success">
-              <span className="h-1 w-1 rounded-full bg-success" />
-              LIVE LOAD
-            </div>
-          )}
+      {/* LIVE LOAD badge */}
+      {isActive && (
+        <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-success-bg px-3 py-1 text-xs font-semibold uppercase tracking-wide text-success">
+          <span className="h-1 w-1 rounded-full bg-success" />
+          LIVE LOAD
+        </div>
+      )}
 
+      {/* Route + Best Rate row */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
           {/* Route */}
           <h3 className="text-2xl font-bold text-ink">
             {load.origin} → {load.destination}
@@ -74,22 +73,10 @@ export default function LoadCard({ load }: LoadCardProps) {
             {load.equipmentType} • {load.weight.toLocaleString()} lbs • Pickup: {load.pickupDate}
           </p>
         </div>
-      </div>
 
-      {/* Middle row: Stepper + Best Rate panel */}
-      <div className="mt-6 flex items-start justify-between gap-6">
-        {/* Left: Stepper */}
-        <div className="flex-1">
-          <LoadStatusStepper
-            status={load.status}
-            isSourcing={state.isSourcing && state.activeLoadId === load.id}
-            currentRound={state.currentRound}
-          />
-        </div>
-
-        {/* Right: Best Rate panel */}
+        {/* Best Rate panel */}
         {validQuotes.length > 0 && (
-          <div className="flex flex-col items-end">
+          <div className="flex shrink-0 flex-col items-end">
             <span className="text-xs font-medium text-ink-subtle">Best Rate (so far)</span>
             {bestRate !== null ? (
               <>
@@ -109,7 +96,7 @@ export default function LoadCard({ load }: LoadCardProps) {
         )}
       </div>
 
-      {/* Bottom row: Action button */}
+      {/* Source Carriers button */}
       <div className="mt-5 flex items-center gap-4">
         <button
           onClick={handleSourceCarriers}

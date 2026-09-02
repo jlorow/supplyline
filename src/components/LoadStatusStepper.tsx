@@ -19,6 +19,8 @@ const STEPS = [
   { label: 'Ready to Book', Icon: Check },
 ] as const;
 
+const TOTAL_STEPS = STEPS.length;
+
 function getStepIndex(status: Load['status']): StepIndex {
   switch (status) {
     case 'uncovered':
@@ -71,11 +73,68 @@ function getSublabel(
   if (!actionInProgress) {
     return 'Pending';
   }
-  // Action is confirmed underway for the active step
   if (stepIdx === 1 && negotiationCount !== undefined) {
     return `${negotiationCount} active`;
   }
   return 'In progress';
+}
+
+/**
+ * Determine the 3-state visual treatment for each step circle:
+ *
+ * 1. Completed or active (idx <= activeStep):
+ *    Solid bg-brand circle, white icon. Label text-brand when active.
+ *
+ * 2. Upcoming, not the final step (idx > activeStep && idx < totalSteps - 1):
+ *    White/surface-card bg, brand border ring, brand icon.
+ *
+ * 3. Final step, not yet reached (idx === totalSteps - 1 && idx > activeStep):
+ *    Muted surface-page bg, surface-border ring, ink-subtle icon (gray).
+ */
+function getCircleStyles(idx: number, activeStep: StepIndex): {
+  circleClass: string;
+  iconColor: string;
+  labelClass: string;
+  sublabelClass: string;
+} {
+  const isCompletedOrActive = idx <= activeStep;
+  const isFinalUnreached = idx === TOTAL_STEPS - 1 && idx > activeStep;
+
+  if (isCompletedOrActive) {
+    return {
+      circleClass: 'bg-brand border-0 text-white',
+      iconColor: '#FFFFFF',
+      labelClass: idx === activeStep ? 'text-brand' : 'text-ink',
+      sublabelClass: 'text-ink-muted',
+    };
+  }
+
+  if (isFinalUnreached) {
+    return {
+      circleClass: 'bg-surface-page border border-surface-border text-ink-subtle',
+      iconColor: '#64748B',
+      labelClass: 'text-ink',
+      sublabelClass: 'text-ink-subtle',
+    };
+  }
+
+  // Upcoming, not final — brand ring, brand icon
+  return {
+    circleClass: 'bg-surface-card border-[1.5px] border-brand text-brand',
+    iconColor: '#1A62FC',
+    labelClass: 'text-ink',
+    sublabelClass: 'text-ink-muted',
+  };
+}
+
+/**
+ * Determine the connecting line color between step i and step i+1.
+ * Blue if step i+1 is completed/active OR upcoming-not-final.
+ * Gray only if step i+1 is the final unreached step.
+ */
+function getLineColor(nextIdx: number, activeStep: StepIndex): string {
+  const isFinalUnreached = nextIdx === TOTAL_STEPS - 1 && nextIdx > activeStep;
+  return isFinalUnreached ? 'bg-surface-border' : 'bg-brand';
 }
 
 export default function LoadStatusStepper({
@@ -87,53 +146,56 @@ export default function LoadStatusStepper({
   const activeStep = getStepIndex(status);
 
   return (
-    <div className="flex items-center gap-0">
+    <div className="flex flex-col gap-20">
       {STEPS.map((step, idx) => {
         const stepIdx = idx as StepIndex;
-        const isCompleted = idx < activeStep;
-        const isActive = idx === activeStep;
-        const actionInProgress = isActive && isStepActionInProgress(stepIdx, isSourcing, currentRound);
+        const actionInProgress =
+          idx <= activeStep &&
+          isStepActionInProgress(stepIdx, isSourcing, currentRound);
 
-        const circleClass = isActive || isCompleted
-          ? 'bg-brand text-white'
-          : 'bg-surface-page border border-surface-border text-ink-subtle';
+        const { circleClass, iconColor, labelClass, sublabelClass } =
+          getCircleStyles(idx, activeStep);
 
-        const labelClass = isActive || isCompleted
-          ? 'text-ink'
-          : 'text-ink-subtle';
+        const sublabelText = getSublabel(
+          stepIdx,
+          activeStep,
+          actionInProgress,
+          negotiationCount,
+        );
+        const showSublabel = idx === activeStep && sublabelText !== '';
 
-        const sublabelClass = isActive && actionInProgress
-          ? 'text-brand'
-          : 'text-ink-subtle';
-
-        const sublabelText = getSublabel(stepIdx, activeStep, actionInProgress, negotiationCount);
-        const showSublabel = isActive && sublabelText !== '';
+        const isLast = idx === STEPS.length - 1;
 
         return (
-          <div key={step.label} className="flex items-center">
-            {/* Step circle + text */}
+          <div key={step.label} className="flex gap-7">
+            {/* Circle + connecting line column */}
             <div className="flex flex-col items-center">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-full ${circleClass}`}>
-                <step.Icon size={18} />
+              {/* Circle */}
+              <div
+                className={`flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-full ${circleClass}`}
+              >
+                <step.Icon size={24} color={iconColor} />
               </div>
-              <span className={`mt-1.5 text-center text-xs font-semibold ${labelClass}`}>
+
+              {/* Connecting line (after all but last) */}
+              {!isLast && (
+                <div
+                  className={`w-1 grow ${getLineColor(idx + 1, activeStep)}`}
+                />
+              )}
+            </div>
+
+            {/* Label + sublabel */}
+            <div className="flex flex-col justify-center">
+              <span className={`text-sm font-semibold ${labelClass}`}>
                 {step.label}
               </span>
               {showSublabel && (
-                <span className={`text-xs font-medium ${sublabelClass}`}>
+                <span className={`text-xs ${sublabelClass}`}>
                   {sublabelText}
                 </span>
               )}
             </div>
-
-            {/* Connecting line (after all but last) */}
-            {idx < STEPS.length - 1 && (
-              <div
-                className={`mx-1 h-0.5 w-8 ${
-                  idx < activeStep ? 'bg-brand' : 'bg-surface-border'
-                }`}
-              />
-            )}
           </div>
         );
       })}
