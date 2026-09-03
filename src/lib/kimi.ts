@@ -1,4 +1,4 @@
-const KIMI_API_URL = 'https://api.moonshot.cn/v1/chat/completions';
+const KIMI_API_URL = 'https://api.moonshot.ai/v1/chat/completions';
 
 export interface SummaryParams {
   loadOrigin: string;
@@ -74,7 +74,7 @@ export async function generateSummary(prompt: string, params?: SummaryParams): P
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'moonshot-v1-8k',
+        model: 'kimi-k3',
         messages: [
           {
             role: 'system',
@@ -85,8 +85,10 @@ export async function generateSummary(prompt: string, params?: SummaryParams): P
             content: prompt,
           },
         ],
-        temperature: 0.7,
-        max_tokens: 200,
+        temperature: 1,
+        // kimi-k3 is a reasoning model: give it room to finish thinking
+        // and still emit the actual summary (reasoning alone can exceed 200 tokens)
+        max_tokens: 1000,
       }),
     });
 
@@ -95,7 +97,13 @@ export async function generateSummary(prompt: string, params?: SummaryParams): P
     }
 
     const data = await response.json();
-    return data.choices[0]?.message?.content?.trim() || fallback;
+    const content = data.choices[0]?.message?.content?.trim();
+    if (!content) {
+      // Reasoning models can return empty content if max_tokens is consumed by thinking
+      console.error('Kimi API returned no content, using local fallback');
+      return fallback;
+    }
+    return content;
   } catch (error) {
     console.error('Kimi API call failed, using local fallback:', error);
     // Graceful fallback to data-driven summary on any API error
