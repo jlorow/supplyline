@@ -1,107 +1,78 @@
-# SupplyLine
+# SupplyLine — Freight Sourcing Agent
 
-**AI freight-sourcing agent using CALL-E for phone-based carrier negotiation.**
+**A CALL-E-powered agent that calls trucking carriers to get competing freight rate quotes, then autonomously negotiates a better price with the highest bidder using the competing quote as leverage.**
 
-Built for the [CALL-E Hackathon](https://call-e.devpost.com/) — targets **Most Innovative Use Case** ($3,000) with **Most Practical Use Case** ($4,000) as secondary.
+## What it does
 
-## What It Does
+SupplyLine takes a freight load (origin, destination, equipment type, weight, pickup date) and:
 
-SupplyLine automates freight broker workflows for the API-less economy:
+1. **Round 1 — Sourcing:** Places live outbound calls to multiple carriers in parallel via CALL-E, asking each for availability and an all-in rate quote.
+2. **Comparison:** Once quotes are in, SupplyLine checks for a meaningful gap between them.
+3. **Round 2 — Negotiation:** If a gap exists, SupplyLine places a second live call to the higher-priced carrier, presenting the lower competing quote and asking them to match or beat it.
+4. **Recommendation + booking:** A plain-language recommendation summarizes the outcome, and the broker can confirm and book the negotiated rate.
 
-1. **Source Carriers** — Calls multiple trucking carriers via CALL-E to get live rate quotes
-2. **Compare & Rank** — Deterministic code compares quotes, identifies the best rate, and decides if negotiation is worth it
-3. **Negotiate** — Calls the higher-quoted carrier back with the competing rate and asks them to match or beat it
-4. **Recommend & Book** — Generates an AI-powered recommendation summary and lets the broker book the winning carrier with one click
-5. **View Transcripts** — Full call transcripts and structured evidence for every quote
+This demonstrates a full autonomous phone-based negotiation loop — not a single-shot call, but a call → compare → call-back → decide workflow.
 
-## Demo Scenario
+## Why this is useful for AI-agent phone-call workflows
 
-- **Load:** Chicago, IL → Atlanta, GA | Dry Van | 43,000 lbs | Sept 1, 2026
-- **Carrier A:** Rockridge Transport LLC — quotes $1,800
-- **Carrier B:** Prairie Line Carriers — quotes $1,650
-- **Negotiation:** SupplyLine calls Rockridge back with Prairie Line's $1,650 rate
-- **Result:** Rockridge matches down to $1,620 — **$180 saved** vs their original quote, **$30 better** than Prairie Line
-
-## Tech Stack
-
-- Next.js 14 (App Router)
-- TypeScript (strict)
-- Tailwind CSS
-- CALL-E SDK (`@call-e/calle`)
-- Kimi API (`moonshot-v1-8k`) for recommendation summaries
-- React Context for state
-- In-memory data store (MVP)
-
-## Architecture
-
-```
-src/
-├── app/
-│   ├── actions.ts          # Server actions — CALL-E SDK calls + Kimi summaries
-│   ├── page.tsx            # Load dashboard
-│   └── layout.tsx          # Root layout with StoreProvider
-├── components/
-│   ├── LoadDashboard.tsx   # Main dashboard — quotes, negotiation, booking
-│   ├── LoadCard.tsx        # Individual load card
-│   ├── BookingConfirmation.tsx
-│   ├── CallTranscript.tsx
-│   └── StatusBadge.tsx
-├── lib/
-│   ├── types.ts            # TypeScript interfaces
-│   ├── data.ts             # Demo data + initial state
-│   ├── store.tsx           # React Context + state management
-│   ├── calle.ts            # CALL-E task templates + mock functions
-│   ├── comparison.ts       # Deterministic quote comparison logic
-│   └── kimi.ts             # Kimi API client with mock fallback
-└── schemas/
-    └── quote-schema.ts     # CALL-E structured result schemas
-```
-
-## Key Design Decisions
-
-- **Deterministic comparison:** All quote ranking, threshold decisions, and savings math is pure code — no LLM involved. Fast, auditable, and correct.
-- **LLM only for summaries:** Kimi generates the human-readable recommendation explanation. The numbers come from code.
-- **Server actions for CALL-E:** All SDK calls run server-side to protect API keys.
-- **Mock mode:** `MOCK_CALLS=true` enables build verification without real phone calls.
+Most phone-call agent examples place a single call and report the result. SupplyLine shows a multi-round, stateful calling pattern where the outcome of one call directly determines the content and target of a second call — a common real-world pattern (negotiation, follow-up confirmation, escalation) that other agent builders can adapt.
 
 ## Setup
 
+### Requirements
+- Node.js 20.9+
+- A CALL-E account and API key (see the main [CALL-E Developer Docs](https://docs.heycall-e.com) for how to get one)
+- (Optional) A Moonshot/Kimi API key for AI-generated recommendation summaries
+
+### Environment variables
+
+Create a `.env.local` file in the project root:
+
+```
+CALLE_API_KEY=your_calle_api_key_here
+KIMI_API_KEY=your_kimi_api_key_here # optional — see "AI summary fallback" below
+MOCK_CALLS=false
+```
+
+### Install and run
+
 ```bash
 npm install
-```
-
-Create `.env.local`:
-
-```
-NEXT_PUBLIC_APP_NAME=SupplyLine
-CALLE_API_KEY=your_calle_api_key_here
-KIMI_API_KEY=your_kimi_api_key_here
-MOCK_CALLS=true    # Set to false for real phone calls
-```
-
-```bash
 npm run dev
 ```
 
-## Running the Demo
+Visit `http://localhost:3000`.
 
-1. Click **"Source Carriers"** — simulates Round 1 calls to Rockridge and Prairie Line
-2. Click **"Negotiate Best Rate"** — simulates Round 2 call to Rockridge with Prairie Line's rate
-3. Review the **Final Recommendation** with AI summary and savings
-4. Click **"Book Carrier"** — creates a booking record
-5. View **Call Transcripts** below
-6. Click **"Reset Demo"** to run again
+## ⚠️ Side effects — this app places real outbound phone calls
 
-## Hackathon Submission
+When `MOCK_CALLS=false`, clicking **"Source Carriers"** or **"Negotiate Best Rate"** places **real, live outbound phone calls** via your CALL-E account to the carrier phone numbers configured in `src/lib/data.ts`, and consumes real CALL-E call credits.
 
-- **Repo:** https://github.com/jlorow/supplyline
-- **Primary track:** Most Innovative Use Case ($3,000)
-- **Secondary track:** Most Practical Use Case ($4,000)
-- **Innovation:** Two-round sequential calling with dynamic negotiation task composition — a capability not demonstrated in CALL-E's own examples
-- **Practicality:** Solves a real $50B+ market problem (freight spot market negotiation) using live phone calls to API-less carriers
+**Before running this against real numbers:**
+- Replace the example carrier phone numbers in `src/lib/data.ts` with numbers you are authorized to call, in E.164 format.
+- Be aware of your CALL-E account's rate limits and credit balance.
+- Never call a number without the recipient's knowledge/consent that they may receive an automated call.
 
-## Notes
+## Dry-run / preview mode
 
-- This is a hackathon MVP. In production, loads would come from a TMS or load board via webhook.
-- The negotiation mechanic uses intentional friction in the demo transcript ("Well, $1,650 is tight for us...") to prove CALL-E handles real conversation dynamics, not scripted agreement.
-- All comparison and savings calculations are deterministic — the LLM only generates the human-readable summary.
+Set `MOCK_CALLS=true` in `.env.local` to run the entire app without placing any real calls. In this mode, all carrier responses are simulated locally, letting you explore the full UI flow (sourcing → comparison → negotiation → booking) with zero cost and zero side effects. This is the recommended mode for first-time exploration of the app.
+
+## AI summary fallback (no Kimi key required)
+
+The final recommendation text is generated by an external summarization API (Moonshot/Kimi) if `KIMI_API_KEY` is set. **If no key is provided, or the API call fails for any reason, the app automatically falls back to a deterministic, locally-generated summary built from the same real negotiation data** (winning carrier, rate, savings vs. original quote, savings vs. next-best quote). No functionality is lost without a Kimi key — only the phrasing becomes template-based instead of LLM-generated.
+
+## Credential handling
+
+- Never commit `.env.local` or any real API key to version control — `.env.local` is already listed in `.gitignore`.
+- The `CALLE_API_KEY` and `KIMI_API_KEY` values are read from environment variables only, server-side (via Next.js server actions) — they are never exposed to the browser/client.
+
+## Cancellation / stopping calls in progress
+
+This app does not currently support cancelling an in-flight call once "Source Carriers" or "Negotiate Best Rate" is clicked. If a call is taking longer than expected, wait for CALL-E's own call timeout to resolve it, or stop the local dev server (calls already placed will still run to completion on CALL-E's side regardless of whether the local app is running).
+
+## Tech stack
+
+Next.js 16 (App Router), TypeScript, React, Tailwind CSS, Server Actions, CALL-E SDK, Moonshot AI (Kimi) — optional.
+
+## License
+
+MIT (matches the parent repository's license).
