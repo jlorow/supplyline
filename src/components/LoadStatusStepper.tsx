@@ -129,12 +129,15 @@ function getCircleStyles(idx: number, activeStep: StepIndex): {
 
 /**
  * Determine the connecting line color between step i and step i+1.
- * Blue if step i+1 is completed/active OR upcoming-not-final.
- * Gray only if step i+1 is the final unreached step.
+ * Blue only if step i is genuinely completed OR step i is the active step
+ * AND its real action-state flag shows it's actually in progress.
+ * Otherwise gray — uses the same source of truth as the sublabel gating.
  */
-function getLineColor(nextIdx: number, activeStep: StepIndex): string {
-  const isFinalUnreached = nextIdx === TOTAL_STEPS - 1 && nextIdx > activeStep;
-  return isFinalUnreached ? 'bg-surface-border' : 'bg-brand';
+function getLineColor(
+  isCompleted: boolean,
+  actionInProgress: boolean,
+): string {
+  return isCompleted || actionInProgress ? 'bg-brand' : 'bg-surface-border';
 }
 
 export default function LoadStatusStepper({
@@ -153,6 +156,8 @@ export default function LoadStatusStepper({
           idx <= activeStep &&
           isStepActionInProgress(stepIdx, isSourcing, currentRound);
 
+        const isCompleted = idx < activeStep;
+
         const { circleClass, iconColor, labelClass, sublabelClass } =
           getCircleStyles(idx, activeStep);
 
@@ -167,20 +172,20 @@ export default function LoadStatusStepper({
         const isLast = idx === STEPS.length - 1;
 
         return (
-          <div key={step.label} className="flex gap-7">
-            {/* Circle + connecting line column */}
-            <div className="flex flex-col items-center">
+          <div key={step.label} className="relative flex gap-7">
+            {/* Circle column (positioned relative so line can be absolute) */}
+            <div className="relative flex w-[60px] shrink-0 items-start justify-center">
               {/* Circle */}
               <div
-                className={`flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-full ${circleClass}`}
+                className={`flex h-[60px] w-[60px] items-center justify-center rounded-full ${circleClass}`}
               >
                 <step.Icon size={24} color={iconColor} />
               </div>
 
-              {/* Connecting line (after all but last) */}
+              {/* Connecting line — absolutely positioned, fixed height matching gap-20 */}
               {!isLast && (
                 <div
-                  className={`w-1 grow ${getLineColor(idx + 1, activeStep)}`}
+                  className={`absolute left-1/2 top-[60px] -translate-x-1/2 h-20 w-1 ${getLineColor(isCompleted, actionInProgress)}`}
                 />
               )}
             </div>

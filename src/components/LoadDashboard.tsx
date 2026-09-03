@@ -130,22 +130,24 @@ export default function LoadDashboard() {
         </div>
       </header>
 
-      {/* Outer row: sidenav + right content */}
-      <div className="flex items-start gap-20 p-6">
-        {/* Independent left sidenav */}
-        <aside className="w-[300px] shrink-0 pt-10">
-          <LoadStatusStepper
-            status={activeLoad?.status ?? 'uncovered'}
-            isSourcing={state.isSourcing && state.activeLoadId === activeLoad?.id}
-            currentRound={state.currentRound}
-          />
-        </aside>
+      {/* Centered content wrapper */}
+      <div className="mx-auto w-full max-w-[1300px]">
+        {/* Outer row: sidenav + right content */}
+        <div className="flex items-start gap-20 p-6">
+          {/* Independent left sidenav */}
+          <aside className="w-[300px] shrink-0 pt-10">
+            <LoadStatusStepper
+              status={activeLoad?.status ?? 'uncovered'}
+              isSourcing={state.isSourcing && state.activeLoadId === activeLoad?.id}
+              currentRound={state.currentRound}
+            />
+          </aside>
 
-        {/* Right content column */}
-        <div className="flex-1 min-w-0">
-          <h2 className="mb-6 text-lg font-semibold text-ink">Load Board</h2>
+          {/* Right content column */}
+          <div className="flex-1 min-w-0">
+            <h2 className="mb-6 text-lg font-semibold text-ink">Load Board</h2>
 
-          <div className="space-y-6">
+            <div className="space-y-6">
             {activeLoad && <LoadCard load={activeLoad} />}
 
             {round1Quotes.length > 0 && !isBooked && (
@@ -266,20 +268,21 @@ export default function LoadDashboard() {
             )}
 
             {isBooked && <BookingConfirmation />}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Call Transcripts — full width, below both columns */}
-      <div className="px-6">
-        {loadQuotes.length > 0 && <CallTranscript />}
-      </div>
-
-      {state.error && (
-        <div className="mx-6 mt-4 rounded-md bg-red-50 p-4 text-red-700">
-          <p className="text-sm font-medium">Error: {state.error}</p>
+        {/* Call Transcripts — below both columns, same centered wrapper */}
+        <div className="px-6">
+          {loadQuotes.length > 0 && <CallTranscript />}
         </div>
-      )}
+
+        {state.error && (
+          <div className="mx-6 mt-4 rounded-md bg-red-50 p-4 text-red-700">
+            <p className="text-sm font-medium">Error: {state.error}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
