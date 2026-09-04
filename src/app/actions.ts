@@ -16,7 +16,7 @@ const calleClient = new CalleClient({
   apiKey: process.env.CALLE_API_KEY || '',
 });
 
-const MOCK_CALLS = process.env.MOCK_CALLS === 'true';
+const MOCK_CALLS = process.env.MOCK_CALLS !== 'false';
 
 /**
  * Server Action: Round 1 — call all carriers for quotes SEQUENTIALLY.
